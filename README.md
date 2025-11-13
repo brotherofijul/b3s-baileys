@@ -67,9 +67,9 @@ npm install
 ## Usage
 
 ```javascript
-import { makeWASocket, DisconnectReasonproto, proto, initAuthCreds, BufferJSON } from '@whiskeysockets/baileys';
+import { makeWASocket, DisconnectReason, proto, initAuthCreds, BufferJSON } from '@whiskeysockets/baileys';
 // or
-// import { makeWASocket, DisconnectReasonproto, proto, initAuthCreds, BufferJSON } from 'baileys';
+// import { makeWASocket, DisconnectReason, proto, initAuthCreds, BufferJSON } from 'baileys';
 import useBetterSqlite3AuthState from 'b3s-baileys';
 
 const { state, saveCreds, resetSession } = useBetterSqlite3AuthState(
