@@ -67,26 +67,34 @@ npm install
 ## Usage
 
 ```javascript
-import makeWASocket from '@whiskeysockets/baileys';
+import { makeWASocket, DisconnectReasonproto, proto, initAuthCreds, BufferJSON } from '@whiskeysockets/baileys';
+// or
+// import { makeWASocket, DisconnectReasonproto, proto, initAuthCreds, BufferJSON } from 'baileys';
 import useBetterSqlite3AuthState from 'b3s-baileys';
-import { proto, initAuthCreds, BufferJSON } from '@whiskeysockets/baileys';
 
 const { state, saveCreds, resetSession } = useBetterSqlite3AuthState(
-  './auth.db',  // SQLite database path
+  './session.db',  // SQLite database path
   { proto, initAuthCreds, BufferJSON }  // Baileys utils
 );
 
 // Initialize WhatsApp socket
 const sock = makeWASocket({
   auth: state,
-  printQRInTerminal: true
 });
 
 // Save credentials on update
 sock.ev.on('creds.update', saveCreds);
 
 // Example: Reset session
-// await resetSession();
+sock.ev.on('connection.update', async(update) => {
+  const { lastDisconnect, connection } = update
+  if (connection === "close") {
+    const statusCode = lastDisconnect?.error?.output?.statusCode;
+    if (statusCode === DisconnectReason.loggedOut) {
+      await resetSession()
+    }
+  }
+})
 ```
 
 ## Description
