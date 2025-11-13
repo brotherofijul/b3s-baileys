@@ -1,8 +1,8 @@
 # b3s-baileys
 
-[![Version](https://badge.fury.io/js/b3s-baileys.svg)](https://www.npmjs.com/package/b3s-baileys)
+[![Version](https://badge.fury.io/js/b3s-baileys.svg?cache=0)](https://www.npmjs.com/package/b3s-baileys)
 [![Nodejs >=18](https://img.shields.io/badge/Node.js-%3E%3D18-blue.svg)](https://nodejs.org/)
-[![Downloads](https://img.shields.io/npm/dt/b3s-baileys.svg)](https://www.npmjs.com/package/b3s-baileys)
+[![Downloads](https://img.shields.io/npm/dt/b3s-baileys.svg?cache=0)](https://www.npmjs.com/package/b3s-baileys)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 > Lightweight Baileys auth state adapter using **better-sqlite3** and **NodeCache**  
