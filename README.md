@@ -1,9 +1,11 @@
-# b3s-baileys
+<h1 align="center">b3s-baileys</h1>
+<p align="center">
+  <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/Node.js-%3E%3D18-blue.svg" alt="Node.js version" /></a>
+  <a href="https://www.npmjs.com/package/b3s-baileys"><img src="https://badge.fury.io/js/b3s-baileys.svg?cache=0" alt="npm version" /></a>
+  <a href="https://www.npmjs.com/package/b3s-baileys"><img src="https://img.shields.io/npm/dm/b3s-baileys.svg?cache=0" alt="npm downloads" /></a>
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License" /></a>
+</p>
 
-[![Version](https://badge.fury.io/js/b3s-baileys.svg?cache=0)](https://www.npmjs.com/package/b3s-baileys)
-[![Nodejs >=18](https://img.shields.io/badge/Node.js-%3E%3D18-blue.svg)](https://nodejs.org/)
-[![Downloads](https://img.shields.io/npm/dt/b3s-baileys.svg?cache=0)](https://www.npmjs.com/package/b3s-baileys)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 > Lightweight Baileys auth state adapter using **better-sqlite3** and **NodeCache**  
 > Built for efficient, persistent, and cache-optimized WhatsApp authentication sessions.
