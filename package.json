@@ -1,6 +1,6 @@
 {
 	"name": "b3s-baileys",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"description": "Lightweight Baileys auth state adapter",
 	"main": "src/index.js",
 	"type": "module",
