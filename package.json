@@ -1,0 +1,60 @@
+{
+	"name": "b3s-baileys",
+	"version": "1.0.0",
+	"description": "Lightweight Baileys auth state adapter",
+	"main": "src/index.js",
+	"type": "module",
+	"files": ["src", "README.md", "CHANGELOG.md"],
+	"publishConfig": {
+		"access": "public"
+	},
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"keywords": [
+		"baileys",
+		"baileys-adapter",
+		"baileys-auth-state",
+		"auth-state"
+	],
+	"author": "Brother of Ijul",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/brotherofijul/b3s-baileys.git"
+	},
+	"packageManager": "pnpm@10.22.0",
+	"dependencies": {
+		"better-sqlite3": "latest",
+		"node-cache": "latest"
+	},
+	"release": {
+		"branches": [
+			"main",
+			{
+				"name": "beta",
+				"prerelease": true
+			}
+		],
+		"plugins": [
+			"@semantic-release/commit-analyzer",
+			"@semantic-release/release-notes-generator",
+			"@semantic-release/changelog",
+			[
+				"@semantic-release/npm",
+				{
+					"npmPublish": true,
+					"tar": true
+				}
+			],
+			[
+				"@semantic-release/git",
+				{
+					"assets": ["package.json", "CHANGELOG.md"],
+					"message": "chore(release): ${nextRelease.version} [skip ci]"
+				}
+			],
+			"@semantic-release/github"
+		]
+	}
+}
