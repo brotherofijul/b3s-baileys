@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/brotherofijul/b3s-baileys/compare/v1.0.0...v1.0.1) (2025-11-13)
+
+
+### Bug Fixes
+
+* update README with usage example ([49726cc](https://github.com/brotherofijul/b3s-baileys/commit/49726cc85c8525916338402d3a3364c49f0eb97c))
+
 # 1.0.0 (2025-11-13)
 
 
