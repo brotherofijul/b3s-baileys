@@ -1,3 +1,11 @@
+## [1.0.3](https://github.com/brotherofijul/b3s-baileys/compare/v1.0.2...v1.0.3) (2025-11-15)
+
+
+### Bug Fixes
+
+* **auth:** improve session handling and include full auth_state cleanup + pragma tuning ([49c521d](https://github.com/brotherofijul/b3s-baileys/commit/49c521dbd6640152ae4515056b03228079a9e5aa))
+* **auth:** improve session handling and include full auth_state cleanup + pragma tuning ([5b0cc06](https://github.com/brotherofijul/b3s-baileys/commit/5b0cc060ba3763b8ee1eb58160231acda8ab3232))
+
 ## [1.0.2](https://github.com/brotherofijul/b3s-baileys/compare/v1.0.1...v1.0.2) (2025-11-13)
 
 
