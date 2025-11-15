@@ -2,7 +2,7 @@
 <p align="center">
   <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/Node.js-%3E%3D18-blue.svg" alt="Node.js version" /></a>
   <a href="https://www.npmjs.com/package/b3s-baileys"><img src="https://badge.fury.io/js/b3s-baileys.svg?cache=0" alt="npm version" /></a>
-  <a href="https://www.npmjs.com/package/b3s-baileys"><img src="https://img.shields.io/npm/dm/b3s-baileys.svg?cache=0" alt="npm downloads" /></a>
+  <a href="https://www.npmjs.com/package/b3s-baileys"><img src="https://img.shields.io/npm/dt/b3s-baileys.svg?cache=0" alt="npm downloads" /></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License" /></a>
 </p>
 
@@ -74,7 +74,7 @@ import { makeWASocket, DisconnectReason, proto, initAuthCreds, BufferJSON } from
 // import { makeWASocket, DisconnectReason, proto, initAuthCreds, BufferJSON } from 'baileys';
 import useBetterSqlite3AuthState from 'b3s-baileys';
 
-const { state, saveCreds, resetSession } = useBetterSqlite3AuthState(
+const { state, saveCreds, resetSession } = await useBetterSqlite3AuthState(
   './session.db',  // SQLite database path
   { proto, initAuthCreds, BufferJSON }  // Baileys utils
 );
