@@ -1,7 +1,9 @@
 import Database from "better-sqlite3";
 import NodeCache from "node-cache";
 
-export default function useBetterSqlite3AuthState (
+const cache = new NodeCache({ stdTTL: 0 });
+
+export default async function useBetterSqlite3AuthState(
 	dbPath,
 	{ proto, initAuthCreds, BufferJSON }
 ) {
@@ -9,7 +11,6 @@ export default function useBetterSqlite3AuthState (
 		throw new Error("Invalid dbPath: expected a valid database file path.");
 	}
 
-	// Validation for required modules
 	if (!proto || !initAuthCreds || !BufferJSON) {
 		throw new Error(
 			"Missing required dependencies: proto, initAuthCreds, and BufferJSON must be provided."
@@ -36,150 +37,124 @@ export default function useBetterSqlite3AuthState (
 		throw new Error(`Failed to open database: ${err.message}`);
 	}
 
-	const cache = new NodeCache({ stdTTL: 600, checkperiod: 600 });
+	db.pragma("journal_mode = WAL");
+	db.pragma("synchronous = NORMAL");
+	db.pragma("temp_store = MEMORY");
+	db.pragma("cache_size = -8000");
 
-	try {
-		db.exec(`
-			CREATE TABLE IF NOT EXISTS auth_state (
-				id INTEGER PRIMARY KEY AUTOINCREMENT,
-				key TEXT UNIQUE NOT NULL,
-				value TEXT NOT NULL
-			);
-		`);
-	} catch (err) {
-		throw new Error(`Failed to initialize database table: ${err.message}`);
+	db.exec(`
+		CREATE TABLE IF NOT EXISTS auth_state (
+		  id INTEGER PRIMARY KEY AUTOINCREMENT,
+			key TEXT,
+			value TEXT
+		)
+	`);
+
+	const setStmt = db.prepare(
+		`REPLACE INTO auth_state (key, value) VALUES (?, ?)`
+	);
+	const getStmt = db.prepare(`SELECT value FROM auth_state WHERE key = ?`);
+	const deleteStmt = db.prepare(`DELETE FROM auth_state WHERE key = ?`);
+	const clearStmt = db.prepare(`DELETE FROM auth_state`);
+
+	const dbSet = async (key, value) => {
+		return new Promise((resolve) => {
+			setStmt.run(key, JSON.stringify(value, BufferJSON.replacer));
+			cache.set(key, value);
+			resolve();
+		});
+	};
+
+	const dbGet = async (key) => {
+		return new Promise((resolve) => {
+			const cached = cache.get(key);
+			if (cached !== undefined) return resolve(cached);
+
+			const row = getStmt.get(key);
+			if (!row) return resolve(null);
+
+			const parsed = JSON.parse(row.value, BufferJSON.reviver);
+			cache.set(key, parsed);
+			resolve(parsed);
+		});
+	};
+
+	const dbDelete = async (key) => {
+		return new Promise((resolve) => {
+			deleteStmt.run(key);
+			cache.del(key);
+			resolve();
+		});
+	};
+
+	const dbClearAll = async () => {
+		return new Promise((resolve) => {
+			clearStmt.run();
+			cache.flushAll();
+			resolve();
+		});
+	};
+
+	let creds = await dbGet("creds");
+	if (!creds) {
+		creds = initAuthCreds();
+		await dbSet("creds", creds);
 	}
 
-	const getValue = (dbKey) => {
-		try {
-			const cached = cache.get(dbKey);
-			if (cached !== undefined) return cached;
+	return {
+		state: {
+			creds,
 
-			const row = db
-				.prepare("SELECT value FROM auth_state WHERE key = ?")
-				.get(dbKey);
-			if (row) {
-				const value = JSON.parse(row.value, BufferJSON.reviver);
-				cache.set(dbKey, value);
-				return value;
-			}
-			cache.set(dbKey, null);
-			return null;
-		} catch (err) {
-			console.error(`[AuthState] Error reading key "${dbKey}":`, err);
-			return null;
-		}
-	};
+			keys: {
+				get: async (type, ids) => {
+					const out = {};
 
-	const setValue = (dbKey, value) => {
-		try {
-			cache.set(dbKey, value);
-			if (value) {
-				db.prepare(
-					"INSERT OR REPLACE INTO auth_state (key, value) VALUES (?, ?)"
-				).run(dbKey, JSON.stringify(value, BufferJSON.replacer));
-			} else {
-				db.prepare("DELETE FROM auth_state WHERE key = ?").run(dbKey);
-				cache.del(dbKey);
-			}
-		} catch (err) {
-			console.error(`[AuthState] Error writing key "${dbKey}":`, err);
-		}
-	};
+					await Promise.all(
+						ids.map(async (id) => {
+							const keyName = `${type}-${id}`;
+							let value = await dbGet(keyName);
 
-	const getCreds = () => {
-		try {
-			const credsKey = "creds";
-			let creds = getValue(credsKey);
-			if (!creds) {
-				creds = initAuthCreds();
-				setValue(credsKey, creds);
-			}
-			return creds;
-		} catch (err) {
-			throw new Error(
-				`[AuthState] Failed to load credentials: ${err.message}`
-			);
-		}
-	};
+							if (type === "app-state-sync-key" && value) {
+								value =
+									proto.Message.AppStateSyncKeyData.fromObject(
+										value
+									);
+							}
 
-	const setCreds = (creds) => {
-		try {
-			setValue("creds", creds);
-		} catch (err) {
-			console.error(
-				`[AuthState] Failed to save credentials: ${err.message}`
-			);
-		}
-	};
+							out[id] = value || null;
+						})
+					);
 
-	const readKey = (type, id) => getValue(`key:${type}:${id}`);
-	const writeKey = (type, id, value) => setValue(`key:${type}:${id}`, value);
-	const removeKey = (type, id) => setValue(`key:${type}:${id}`, null);
+					return out;
+				},
 
-	const creds = getCreds();
+				set: async (data) => {
+					const tasks = [];
 
-	const state = {
-		creds,
-		keys: {
-			get: (type, ids) => {
-				const data = {};
-				for (const id of ids) {
-					try {
-						let value = readKey(type, id);
-						if (type === "app-state-sync-key" && value) {
-							value =
-								proto.Message.AppStateSyncKeyData.fromObject(
-									value
-								);
-						}
-						data[id] = value;
-					} catch (err) {
-						console.error(
-							`[AuthState] Failed to read key ${type}:${id}`,
-							err
-						);
-						data[id] = null;
-					}
-				}
-				return data;
-			},
-			set: (data) => {
-				for (const category in data) {
-					for (const id in data[category]) {
-						try {
+					for (const category in data) {
+						for (const id in data[category]) {
 							const value = data[category][id];
-							value
-								? writeKey(category, id, value)
-								: removeKey(category, id);
-						} catch (err) {
-							console.error(
-								`[AuthState] Failed to write key ${category}:${id}`,
-								err
-							);
+							const keyName = `${category}-${id}`;
+
+							if (value) {
+								tasks.push(dbSet(keyName, value));
+							} else {
+								tasks.push(dbDelete(keyName));
+							}
 						}
 					}
+
+					await Promise.all(tasks);
 				}
 			}
+		},
+
+		saveCreds: async () => {
+			await dbSet("creds", creds);
+		},
+
+		resetSession: async () => {
+			await dbClearAll();
 		}
 	};
-
-	const saveCreds = () => {
-		try {
-			setCreds(state.creds);
-		} catch (err) {
-			console.error("[AuthState] Failed to save creds:", err);
-		}
-	};
-
-	const resetSession = () => {
-		try {
-			cache.flushAll();
-			db.exec("DELETE FROM auth_state");
-		} catch (err) {
-			console.error("[AuthState] Failed to reset session:", err);
-		}
-	};
-
-	return { state, saveCreds, resetSession };
-};
+}
