@@ -1,3 +1,10 @@
+## [1.0.4](https://github.com/brotherofijul/b3s-baileys/compare/v1.0.3...v1.0.4) (2025-11-27)
+
+
+### Bug Fixes
+
+* keep creds reference alive to stop re-login loop ([9676258](https://github.com/brotherofijul/b3s-baileys/commit/9676258c6877f39cf22d1202263f25f021210226))
+
 ## [1.0.3](https://github.com/brotherofijul/b3s-baileys/compare/v1.0.2...v1.0.3) (2025-11-15)
 
 
