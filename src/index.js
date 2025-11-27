@@ -10,95 +10,66 @@ export default async function useBetterSqlite3AuthState(
 	if (!dbPath || typeof dbPath !== "string") {
 		throw new Error("Invalid dbPath: expected a valid database file path.");
 	}
-
 	if (!proto || !initAuthCreds || !BufferJSON) {
-		throw new Error(
-			"Missing required dependencies: proto, initAuthCreds, and BufferJSON must be provided."
-		);
+		throw new Error("Missing required dependencies.");
 	}
 
-	if (typeof initAuthCreds !== "function") {
-		throw new Error("initAuthCreds must be a function.");
-	}
-
-	if (
-		typeof BufferJSON.replacer !== "function" ||
-		typeof BufferJSON.reviver !== "function"
-	) {
-		throw new Error(
-			"BufferJSON must contain valid 'replacer' and 'reviver' functions."
-		);
-	}
-
-	let db;
-	try {
-		db = new Database(dbPath);
-	} catch (err) {
-		throw new Error(`Failed to open database: ${err.message}`);
-	}
-
+	const db = new Database(dbPath);
 	db.pragma("journal_mode = WAL");
 	db.pragma("synchronous = NORMAL");
 	db.pragma("temp_store = MEMORY");
 	db.pragma("cache_size = -8000");
 
 	db.exec(`
-		CREATE TABLE IF NOT EXISTS auth_state (
-		  id INTEGER PRIMARY KEY AUTOINCREMENT,
-			key TEXT,
-			value TEXT
-		)
-	`);
+    CREATE TABLE IF NOT EXISTS auth_state (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      key TEXT UNIQUE,
+      value TEXT
+    )
+  `);
 
-	const setStmt = db.prepare(
-		`REPLACE INTO auth_state (key, value) VALUES (?, ?)`
+	const upsertStmt = db.prepare(
+		`INSERT INTO auth_state (key, value) VALUES (?, ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value`
 	);
+
 	const getStmt = db.prepare(`SELECT value FROM auth_state WHERE key = ?`);
 	const deleteStmt = db.prepare(`DELETE FROM auth_state WHERE key = ?`);
 	const clearStmt = db.prepare(`DELETE FROM auth_state`);
 
-	const dbSet = async (key, value) => {
-		return new Promise((resolve) => {
-			setStmt.run(key, JSON.stringify(value, BufferJSON.replacer));
-			cache.set(key, value);
-			resolve();
-		});
+
+	const readValue = async (key) => {
+		const cached = cache.get(key);
+		if (cached !== undefined) return cached;
+
+		const row = getStmt.get(key);
+		if (!row) return null;
+
+		const parsed = JSON.parse(row.value, BufferJSON.reviver);
+		cache.set(key, parsed);
+		return parsed;
 	};
 
-	const dbGet = async (key) => {
-		return new Promise((resolve) => {
-			const cached = cache.get(key);
-			if (cached !== undefined) return resolve(cached);
-
-			const row = getStmt.get(key);
-			if (!row) return resolve(null);
-
-			const parsed = JSON.parse(row.value, BufferJSON.reviver);
-			cache.set(key, parsed);
-			resolve(parsed);
-		});
+	const writeValue = async (key, value) => {
+		const stringified = JSON.stringify(value, BufferJSON.replacer);
+		upsertStmt.run(key, stringified);
+		cache.set(key, value);
 	};
 
-	const dbDelete = async (key) => {
-		return new Promise((resolve) => {
-			deleteStmt.run(key);
-			cache.del(key);
-			resolve();
-		});
+	const removeValue = async (key) => {
+		deleteStmt.run(key);
+		cache.del(key);
 	};
 
-	const dbClearAll = async () => {
-		return new Promise((resolve) => {
-			clearStmt.run();
-			cache.flushAll();
-			resolve();
-		});
+	const clearAll = async () => {
+		clearStmt.run();
+		cache.flushAll();
 	};
 
-	let creds = await dbGet("creds");
-	if (!creds) {
-		creds = initAuthCreds();
-		await dbSet("creds", creds);
+	const creds = (await readValue("creds")) ?? initAuthCreds();
+
+	if (!cache.has("creds")) {
+		await writeValue("creds", creds);
 	}
 
 	return {
@@ -107,12 +78,11 @@ export default async function useBetterSqlite3AuthState(
 
 			keys: {
 				get: async (type, ids) => {
-					const out = {};
-
+					const data = {};
 					await Promise.all(
 						ids.map(async (id) => {
-							const keyName = `${type}-${id}`;
-							let value = await dbGet(keyName);
+							const key = `${type}-${id}`;
+							let value = await readValue(key);
 
 							if (type === "app-state-sync-key" && value) {
 								value =
@@ -121,11 +91,10 @@ export default async function useBetterSqlite3AuthState(
 									);
 							}
 
-							out[id] = value || null;
+							data[id] = value ?? null;
 						})
 					);
-
-					return out;
+					return data;
 				},
 
 				set: async (data) => {
@@ -134,12 +103,12 @@ export default async function useBetterSqlite3AuthState(
 					for (const category in data) {
 						for (const id in data[category]) {
 							const value = data[category][id];
-							const keyName = `${category}-${id}`;
+							const key = `${category}-${id}`;
 
 							if (value) {
-								tasks.push(dbSet(keyName, value));
+								tasks.push(writeValue(key, value));
 							} else {
-								tasks.push(dbDelete(keyName));
+								tasks.push(removeValue(key));
 							}
 						}
 					}
@@ -148,13 +117,13 @@ export default async function useBetterSqlite3AuthState(
 				}
 			}
 		},
-
+		
 		saveCreds: async () => {
-			await dbSet("creds", creds);
+			await writeValue("creds", creds);
 		},
-
+		
 		resetSession: async () => {
-			await dbClearAll();
+			await clearAll();
 		}
 	};
 }
